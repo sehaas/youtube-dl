@@ -45,7 +45,6 @@ class WistiaIE(InfoExtractor):
                 'filesize': a['size'],
                 'ext': a['ext'],
             })
-        formats.sort(key=lambda a: a['filesize'])
 
         return {
             'id': video_id,

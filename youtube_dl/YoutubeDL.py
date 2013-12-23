@@ -676,17 +676,47 @@ class YoutubeDL(object):
             formats = list(takewhile_inclusive(
                 lambda f: f['format_id'] != format_limit, formats
             ))
-        if self.params.get('prefer_free_formats'):
-            def _free_formats_key(f):
+
+        def _formats_key(f):
+            preference = f.get('preference')
+            if preference is None:
+                preference = 0 if f.get('url', '').startswith('http') else -0.1
+                if f.get('ext') in ['f4f', 'f4m']:  # Not yet supported
+                    preference -= 0.5
+
+            if f.get('vcodec') == 'none':  # audio only
+                if self.params.get('prefer_free_formats'):
+                    ORDER = [u'aac', u'mp3', u'm4a', u'webm', u'ogg', u'opus']
+                else:
+                    ORDER = [u'webm', u'opus', u'ogg', u'mp3', u'aac', u'm4a']
+                ext_preference = 0
                 try:
-                    ext_ord = [u'flv', u'mp4', u'webm'].index(f['ext'])
+                    audio_ext_preference = ORDER.index(f['ext'])
                 except ValueError:
-                    ext_ord = -1
-                # We only compare the extension if they have the same height and width
-                return (f.get('height') if f.get('height') is not None else -1,
-                        f.get('width') if f.get('width') is not None else -1,
-                        ext_ord)
-            formats = sorted(formats, key=_free_formats_key)
+                    audio_ext_preference = -1
+            else:
+                if self.params.get('prefer_free_formats'):
+                    ORDER = [u'flv', u'mp4', u'webm']
+                else:
+                    ORDER = [u'webm', u'flv', u'mp4']
+                try:
+                    ext_preference = ORDER.index(f['ext'])
+                except ValueError:
+                    ext_preference = -1
+                audio_ext_preference = 0
+
+            return (
+                preference,
+                f.get('height') if f.get('height') is not None else -1,
+                f.get('width') if f.get('width') is not None else -1,
+                ext_preference,
+                f.get('vbr') if f.get('vbr') is not None else -1,
+                f.get('abr') if f.get('abr') is not None else -1,
+                audio_ext_preference,
+                f.get('filesize') if f.get('filesize') is not None else -1,
+                f.get('format_id'),
+            )
+        formats.sort(key=_formats_key)
 
         if formats[0] is not info_dict: 
             # only set the 'formats' fields if the original info_dict list them
@@ -1007,13 +1037,15 @@ class YoutubeDL(object):
     def format_resolution(format, default='unknown'):
         if format.get('vcodec') == 'none':
             return 'audio only'
-        if format.get('_resolution') is not None:
-            return format['_resolution']
+        if format.get('resolution') is not None:
+            return format['resolution']
         if format.get('height') is not None:
             if format.get('width') is not None:
                 res = u'%sx%s' % (format['width'], format['height'])
             else:
                 res = u'%sp' % format['height']
+        elif format.get('width') is not None:
+            res = u'?x%d' % format['width']
         else:
             res = default
         return res
@@ -1025,11 +1057,11 @@ class YoutubeDL(object):
                 res += fdict['format_note'] + u' '
             if (fdict.get('vcodec') is not None and
                     fdict.get('vcodec') != 'none'):
-                res += u'%-5s' % fdict['vcodec']
-            elif fdict.get('vbr') is not None:
-                res += u'video'
+                res += u'%-5s@' % fdict['vcodec']
+            elif fdict.get('vbr') is not None and fdict.get('abr') is not None:
+                res += u'video@'
             if fdict.get('vbr') is not None:
-                res += u'@%4dk' % fdict['vbr']
+                res += u'%4dk' % fdict['vbr']
             if fdict.get('acodec') is not None:
                 if res:
                     res += u', '
@@ -1064,7 +1096,7 @@ class YoutubeDL(object):
 
         header_line = line({
             'format_id': u'format code', 'ext': u'extension',
-            '_resolution': u'resolution', 'format_note': u'note'}, idlen=idlen)
+            'resolution': u'resolution', 'format_note': u'note'}, idlen=idlen)
         self.to_screen(u'[info] Available formats for %s:\n%s\n%s' %
                        (info_dict['id'], header_line, u"\n".join(formats_s)))
 

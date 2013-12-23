@@ -51,7 +51,6 @@ class SpiegelIE(InfoExtractor):
             # Blacklist type 6, it's extremely LQ and not available on the same server
             if n.tag.startswith('type') and n.tag != 'type6'
         ]
-        formats.sort(key=lambda f: f['vbr'])
         duration = float(idoc[0].findall('./duration')[0].text)
 
         info = {

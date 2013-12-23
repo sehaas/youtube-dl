@@ -6,7 +6,6 @@ from .common import InfoExtractor, SearchInfoExtractor
 from ..utils import (
     compat_urllib_parse,
     compat_urlparse,
-    determine_ext,
     clean_html,
 )
 
@@ -84,10 +83,8 @@ class YahooIE(InfoExtractor):
             else:
                 format_url = compat_urlparse.urljoin(host, path)
                 format_info['url'] = format_url
-                format_info['ext'] = determine_ext(format_url)
                 
             formats.append(format_info)
-        formats = sorted(formats, key=lambda f:(f['height'], f['width']))
 
         return {
             'id': video_id,
