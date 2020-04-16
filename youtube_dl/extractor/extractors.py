@@ -407,6 +407,7 @@ from .gfycat import GfycatIE
 from .giantbomb import GiantBombIE
 from .giga import GigaIE
 from .glide import GlideIE
+from .globeplayer import GlobePlayerIE
 from .globo import (
     GloboIE,
     GloboArticleIE,
